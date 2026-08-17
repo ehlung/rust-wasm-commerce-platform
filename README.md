@@ -57,52 +57,9 @@ make run
 
 기본 주소는 `127.0.0.1:8091`입니다.
 
-## Lightsail에서 빌드
+## Lightsail 배포
 
-### SSH 접속과 재접속
-
-Mac에서 새 터미널을 열고 다음 명령을 실행합니다. `<LIGHTSAIL_STATIC_IP>`는 실제 고정 IPv4로 바꾸며 꺾쇠괄호는 입력하지 않습니다.
-
-```bash
-chmod 400 /path/to/LightsailDefaultKey-ap-northeast-2.pem
-ssh -i /path/to/LightsailDefaultKey-ap-northeast-2.pem ubuntu@<LIGHTSAIL_STATIC_IP>
-```
-
-기존 SSH 창에서 빌드가 실행 중이어도 같은 명령으로 두 번째 SSH 세션을 열 수 있습니다. 새 세션은 기존 빌드를 중단하지 않으며 서버 상태를 별도로 확인할 때 사용합니다.
-
-### 연결 종료에 안전한 빌드
-
-처음 빌드는 Wasmtime과 Cranelift를 컴파일하므로 오래 걸릴 수 있습니다. SSH 연결이 끊겨도 빌드를 유지하려면 `tmux`를 사용합니다.
-
-```bash
-sudo apt update
-sudo apt install -y tmux
-tmux new -s wasm-build
-cd ~/apps/rust-wasm-commerce-platform
-CARGO_BUILD_JOBS=1 make build
-```
-
-`Ctrl+B`를 누른 다음 `D`를 누르면 빌드를 유지한 채 tmux 화면에서 빠져나옵니다. 다시 접속할 때는 다음 명령을 사용합니다.
-
-```bash
-tmux attach -t wasm-build
-```
-
-### 마지막 빌드 단계가 오래 걸릴 때
-
-`353/354: host-runner(bin)`처럼 마지막에 오래 머무는 것은 Wasmtime이 포함된 Host Runner를 하나의 Linux 실행 파일로 합치는 최종 링크 단계일 수 있습니다. 1GB RAM 환경에서는 Swap을 사용해 특히 느려질 수 있으므로 곧바로 중단하지 않고 두 번째 SSH 세션에서 상태를 확인합니다.
-
-```bash
-ps -eo pid,etime,%cpu,%mem,cmd | grep -E 'cargo|rustc|cc|ld' | grep -v grep
-free -h
-vmstat 2 5
-sudo dmesg | grep -i -E 'out of memory|killed process' | tail
-```
-
-- `rustc`, `cc`, `ld`가 실행 중이고 CPU 또는 디스크 활동이 있으면 계속 기다림
-- Swap 사용량이 늘어나는 것은 느리지만 작업이 진행 중이라는 의미일 수 있음
-- 관련 프로세스가 없거나 OOM 기록이 있으면 빌드 실패 원인을 확인한 뒤 재실행
-- 같은 프로젝트에서 새로운 `cargo build`를 동시에 실행하지 않음
+서버 준비, 프로젝트 전송, 장시간 빌드, 보안 DB 연결과 실행 검증 과정은 [Lightsail 배포 및 보안 DB 연결 가이드](docs/lightsail-deployment.md)를 참고하세요.
 
 ## API
 
