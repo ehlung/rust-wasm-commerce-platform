@@ -1,0 +1,24 @@
+[workspace]
+members = [
+    "components/gateway",
+    "components/product-agent",
+    "components/inventory-agent",
+    "components/order-agent",
+    "host-runner",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+wit-bindgen = "0.60.0"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+

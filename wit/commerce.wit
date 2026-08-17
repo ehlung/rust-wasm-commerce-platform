@@ -1,0 +1,150 @@
+package ehlung:commerce@0.1.0;
+
+interface models {
+    record product {
+        id: u64,
+        sku: string,
+        name: string,
+        price-cents: u64,
+        stock: u64,
+        active: bool,
+        created-at: string,
+        updated-at: string,
+    }
+
+    record product-draft {
+        sku: string,
+        name: string,
+        price-cents: u64,
+        initial-stock: u64,
+    }
+
+    record order-line-input {
+        product-id: u64,
+        quantity: u32,
+    }
+
+    record order-input {
+        lines: list<order-line-input>,
+    }
+
+    record order-line {
+        product-id: u64,
+        sku: string,
+        product-name: string,
+        quantity: u32,
+        unit-price-cents: u64,
+        line-total-cents: u64,
+    }
+
+    record order-quote-line {
+        product-id: u64,
+        quantity: u32,
+        unit-price-cents: u64,
+        available-stock: u64,
+    }
+
+    record order-quote {
+        lines: list<order-quote-line>,
+        total-cents: u64,
+    }
+
+    record order {
+        id: u64,
+        status: string,
+        total-cents: u64,
+        lines: list<order-line>,
+        created-at: string,
+        updated-at: string,
+    }
+}
+
+interface gateway {
+    enum route-target {
+        health,
+        product,
+        inventory,
+        order,
+        not-found,
+    }
+
+    enum route-action {
+        health,
+        %list,
+        create,
+        get,
+        adjust,
+        cancel,
+        not-found,
+    }
+
+    record route-decision {
+        target: route-target,
+        action: route-action,
+        resource-id: option<u64>,
+    }
+
+    resolve: func(method: string, path: string) -> route-decision;
+}
+
+interface product-repository {
+    use models.{product, product-draft};
+
+    %list: func() -> result<list<product>, string>;
+    create: func(draft: product-draft) -> result<product, string>;
+}
+
+interface product-agent {
+    use models.{product, product-draft};
+
+    %list: func() -> result<list<product>, string>;
+    create: func(draft: product-draft) -> result<product, string>;
+}
+
+interface inventory-repository {
+    use models.{product};
+
+    adjust-stock: func(product-id: u64, delta: s64) -> result<product, string>;
+}
+
+interface inventory-agent {
+    use models.{product};
+
+    adjust-stock: func(product-id: u64, delta: s64) -> result<product, string>;
+}
+
+interface order-repository {
+    use models.{order, order-input, order-quote};
+
+    quote: func(input: order-input) -> result<order-quote, string>;
+    create: func(input: order-input, expected-total-cents: u64) -> result<order, string>;
+    get: func(order-id: u64) -> result<option<order>, string>;
+    cancel: func(order-id: u64) -> result<order, string>;
+}
+
+interface order-agent {
+    use models.{order, order-input};
+
+    create: func(input: order-input) -> result<order, string>;
+    get: func(order-id: u64) -> result<option<order>, string>;
+    cancel: func(order-id: u64) -> result<order, string>;
+}
+
+world gateway-component {
+    export gateway;
+}
+
+world product-component {
+    import product-repository;
+    export product-agent;
+}
+
+world inventory-component {
+    import inventory-repository;
+    export inventory-agent;
+}
+
+world order-component {
+    import order-repository;
+    export order-agent;
+}

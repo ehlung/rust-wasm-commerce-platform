@@ -1,0 +1,23 @@
+[Unit]
+Description=Rust Wasm Commerce Host Runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wasm-commerce
+Group=wasm-commerce
+WorkingDirectory=/opt/rust-wasm-commerce
+EnvironmentFile=/etc/rust-wasm-commerce.env
+ExecStart=/opt/rust-wasm-commerce/bin/host-runner
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/log/rust-wasm-commerce
+
+[Install]
+WantedBy=multi-user.target
+

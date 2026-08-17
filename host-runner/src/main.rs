@@ -1,0 +1,41 @@
+use std::{env, net::SocketAddr, sync::Arc};
+
+use anyhow::{Context, Result};
+use axum::{Router, routing::any};
+use tracing_subscriber::EnvFilter;
+
+mod api;
+mod bindings;
+mod db;
+mod repository;
+mod runtime;
+
+use api::{AppState, dispatch};
+use db::create_pool;
+use runtime::ComponentRuntime;
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    dotenvy::dotenv().ok();
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
+        .init();
+
+    let pool = create_pool()?;
+    pool.get()
+        .context("PostgreSQL에 연결할 수 없습니다. DATABASE_URL과 네트워크 경로를 확인하세요")?;
+    let runtime = Arc::new(ComponentRuntime::load(pool)?);
+    let address: SocketAddr = env::var("APP_ADDR")
+        .unwrap_or_else(|_| "127.0.0.1:8091".to_string())
+        .parse()
+        .context("APP_ADDR 형식이 올바르지 않습니다")?;
+
+    let app = Router::new()
+        .fallback(any(dispatch))
+        .with_state(AppState { runtime });
+    let listener = tokio::net::TcpListener::bind(address).await?;
+    tracing::info!(%address, "Rust/Wasm commerce Host Runner started");
+
+    axum::serve(listener, app).await?;
+    Ok(())
+}
