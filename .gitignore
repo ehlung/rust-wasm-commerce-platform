@@ -22,3 +22,8 @@ target/
 .idea/
 .vscode/
 
+# Local presentation materials
+docs/presentation-*.md
+presentation/
+mkdocs.presentation.yml
+site/
