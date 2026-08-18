@@ -31,11 +31,12 @@ SQL 실행 후 WIT record로 결과 반환
 - Wasm Component: 도메인 규칙, 입력 검증과 처리 흐름
 - WIT: Wasm과 Host 사이에서 허용되는 함수와 데이터 형식
 - Host Runner: HTTP, Wasmtime, 네트워크, TLS, 비밀정보와 DB 연결
+- WASIp2 Context: Rust 표준 라이브러리가 요구하는 CLI·I/O·Clock 등의 표준 Interface 구현. Host 환경변수·디렉터리를 상속하지 않고 TCP·UDP·이름 조회도 명시적으로 비활성화
 - 동기식 Wasmtime·PostgreSQL 작업: Tokio의 blocking 전용 스레드에서 실행해 비동기 HTTP 처리 스레드 차단과 중첩 Runtime 충돌 방지
 - PostgreSQL Adapter: WIT 호출을 SQL과 트랜잭션으로 변환
 - PostgreSQL: 상품, 주문, 주문 항목과 재고 영속화
 
-WIT는 네트워크 방화벽이나 DB 권한을 대신하지 않습니다. Wasm 기능 제한, 서버 네트워크 정책, DB 계정 권한을 함께 적용해야 전체 접근 범위를 제한할 수 있습니다.
+WASI Interface를 Linker에 등록하는 것과 실제 시스템 자원을 허용하는 것은 다릅니다. 이 프로젝트의 WASIp2 Context는 Component에 Host 환경변수·디렉터리를 상속하지 않고 TCP·UDP·이름 조회도 허용하지 않으며, DB 작업은 사용자 정의 WIT Repository만 통과합니다. WIT는 네트워크 방화벽이나 DB 권한을 대신하지 않으므로 Wasm 기능 제한, 서버 네트워크 정책, DB 계정 권한을 함께 적용해야 전체 접근 범위를 제한할 수 있습니다.
 
 ## 1차 구조: 단일 Host Runner의 모듈형 백엔드
 

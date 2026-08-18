@@ -43,7 +43,7 @@ impl ComponentRuntime {
         method: &str,
         path: &str,
     ) -> Result<gateway::exports::ehlung::commerce::gateway::RouteDecision> {
-        let linker = Linker::new(&self.engine);
+        let linker = self.linker()?;
         let mut store = self.store();
         let bindings = gateway::GatewayComponent::instantiate(&mut store, &self.gateway, &linker)
             .map_err(|error| anyhow!("Gateway Component 인스턴스 생성 실패: {error}"))?;
@@ -56,7 +56,7 @@ impl ComponentRuntime {
     pub fn list_products(
         &self,
     ) -> Result<Result<Vec<product::ehlung::commerce::models::Product>, String>> {
-        let mut linker = Linker::new(&self.engine);
+        let mut linker = self.linker()?;
         product::ProductComponent::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
             .map_err(|error| anyhow!("상품 저장소 기능 등록 실패: {error}"))?;
         let mut store = self.store();
@@ -72,7 +72,7 @@ impl ComponentRuntime {
         &self,
         draft: product::ehlung::commerce::models::ProductDraft,
     ) -> Result<Result<product::ehlung::commerce::models::Product, String>> {
-        let mut linker = Linker::new(&self.engine);
+        let mut linker = self.linker()?;
         product::ProductComponent::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
             .map_err(|error| anyhow!("상품 저장소 기능 등록 실패: {error}"))?;
         let mut store = self.store();
@@ -89,7 +89,7 @@ impl ComponentRuntime {
         product_id: u64,
         delta: i64,
     ) -> Result<Result<inventory::ehlung::commerce::models::Product, String>> {
-        let mut linker = Linker::new(&self.engine);
+        let mut linker = self.linker()?;
         inventory::InventoryComponent::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
             .map_err(|error| anyhow!("재고 저장소 기능 등록 실패: {error}"))?;
         let mut store = self.store();
@@ -106,7 +106,7 @@ impl ComponentRuntime {
         &self,
         input: order::ehlung::commerce::models::OrderInput,
     ) -> Result<Result<order::ehlung::commerce::models::Order, String>> {
-        let mut linker = Linker::new(&self.engine);
+        let mut linker = self.linker()?;
         order::OrderComponent::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
             .map_err(|error| anyhow!("주문 저장소 기능 등록 실패: {error}"))?;
         let mut store = self.store();
@@ -122,7 +122,7 @@ impl ComponentRuntime {
         &self,
         order_id: u64,
     ) -> Result<Result<Option<order::ehlung::commerce::models::Order>, String>> {
-        let mut linker = Linker::new(&self.engine);
+        let mut linker = self.linker()?;
         order::OrderComponent::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
             .map_err(|error| anyhow!("주문 저장소 기능 등록 실패: {error}"))?;
         let mut store = self.store();
@@ -138,7 +138,7 @@ impl ComponentRuntime {
         &self,
         order_id: u64,
     ) -> Result<Result<order::ehlung::commerce::models::Order, String>> {
-        let mut linker = Linker::new(&self.engine);
+        let mut linker = self.linker()?;
         order::OrderComponent::add_to_linker::<_, HasSelf<_>>(&mut linker, |state| state)
             .map_err(|error| anyhow!("주문 저장소 기능 등록 실패: {error}"))?;
         let mut store = self.store();
@@ -150,13 +150,15 @@ impl ComponentRuntime {
             .map_err(|error| anyhow!("Order Component 호출 실패: {error}"))
     }
 
+    fn linker(&self) -> Result<Linker<HostState>> {
+        let mut linker = Linker::new(&self.engine);
+        wasmtime_wasi::p2::add_to_linker_sync(&mut linker)
+            .map_err(|error| anyhow!("WASIp2 Host 기능 등록 실패: {error}"))?;
+        Ok(linker)
+    }
+
     fn store(&self) -> Store<HostState> {
-        Store::new(
-            &self.engine,
-            HostState {
-                pool: self.pool.clone(),
-            },
-        )
+        Store::new(&self.engine, HostState::new(self.pool.clone()))
     }
 }
 

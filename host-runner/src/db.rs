@@ -6,13 +6,40 @@ use postgres::Config;
 use postgres_native_tls::MakeTlsConnector;
 use r2d2::Pool;
 use r2d2_postgres::PostgresConnectionManager;
+use wasmtime::component::ResourceTable;
+use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
 pub type PgManager = PostgresConnectionManager<MakeTlsConnector>;
 pub type DbPool = Pool<PgManager>;
 
-#[derive(Clone)]
 pub struct HostState {
     pub pool: DbPool,
+    wasi: WasiCtx,
+    table: ResourceTable,
+}
+
+impl HostState {
+    pub fn new(pool: DbPool) -> Self {
+        let mut wasi = WasiCtx::builder();
+        wasi.allow_tcp(false)
+            .allow_udp(false)
+            .allow_ip_name_lookup(false);
+
+        Self {
+            pool,
+            wasi: wasi.build(),
+            table: ResourceTable::new(),
+        }
+    }
+}
+
+impl WasiView for HostState {
+    fn ctx(&mut self) -> WasiCtxView<'_> {
+        WasiCtxView {
+            ctx: &mut self.wasi,
+            table: &mut self.table,
+        }
+    }
 }
 
 fn parse_insecure_tls_setting(value: Option<&str>) -> Result<bool> {
