@@ -191,6 +191,14 @@ DATABASE_URL='postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:<DB_PORT>/<DB_NAME>
 APP_ADDR='127.0.0.1:8091'
 ```
 
+기본값은 PostgreSQL 인증서와 접속 호스트명을 검증합니다. 자체 서명 인증서 또는 인증서의 IP 불일치가 확인된 격리된 테스트 DB에 한해서만 다음 설정을 추가합니다.
+
+```dotenv
+PG_TLS_INSECURE='true'
+```
+
+이 설정은 TLS 암호화는 유지하지만 인증서와 호스트명 검증을 생략합니다. 운영 환경에서는 사용하지 말고, 인증서의 SAN과 일치하는 호스트명 및 신뢰할 수 있는 CA 인증서를 사용해야 합니다.
+
 파일 권한을 확인합니다.
 
 ```bash
