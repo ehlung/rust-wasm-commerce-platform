@@ -31,6 +31,7 @@ SQL 실행 후 WIT record로 결과 반환
 - Wasm Component: 도메인 규칙, 입력 검증과 처리 흐름
 - WIT: Wasm과 Host 사이에서 허용되는 함수와 데이터 형식
 - Host Runner: HTTP, Wasmtime, 네트워크, TLS, 비밀정보와 DB 연결
+- 동기식 Wasmtime·PostgreSQL 작업: Tokio의 blocking 전용 스레드에서 실행해 비동기 HTTP 처리 스레드 차단과 중첩 Runtime 충돌 방지
 - PostgreSQL Adapter: WIT 호출을 SQL과 트랜잭션으로 변환
 - PostgreSQL: 상품, 주문, 주문 항목과 재고 영속화
 

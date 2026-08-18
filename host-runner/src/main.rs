@@ -21,10 +21,16 @@ async fn main() -> Result<()> {
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
         .init();
 
-    let pool = create_pool()?;
-    pool.get()
-        .context("PostgreSQL에 연결할 수 없습니다. DATABASE_URL과 네트워크 경로를 확인하세요")?;
-    let runtime = Arc::new(ComponentRuntime::load(pool)?);
+    let runtime = tokio::task::spawn_blocking(|| -> Result<ComponentRuntime> {
+        let pool = create_pool()?;
+        pool.get().context(
+            "PostgreSQL에 연결할 수 없습니다. DATABASE_URL과 네트워크 경로를 확인하세요",
+        )?;
+        ComponentRuntime::load(pool)
+    })
+    .await
+    .context("Host Runner 초기화 작업이 비정상 종료되었습니다")??;
+    let runtime = Arc::new(runtime);
     let address: SocketAddr = env::var("APP_ADDR")
         .unwrap_or_else(|_| "127.0.0.1:8091".to_string())
         .parse()
