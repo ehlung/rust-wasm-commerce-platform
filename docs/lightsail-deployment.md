@@ -12,8 +12,7 @@
 6. Host Runner 실행과 API 검증
 7. PostgreSQL 저장 결과 확인
 8. 필요할 때 systemd와 Nginx로 상시 운영
-
-현재 진행 중인 **3단계 서버 빌드**가 끝나면 4단계부터 이어서 진행합니다.
+9. 보안 DB 검증 종료와 접속정보 제거
 
 ## 작업 전 보안 원칙
 
@@ -313,3 +312,74 @@ CARGO_BUILD_JOBS=1 make build
 ```
 
 이미 같은 이름의 tmux 세션이 있다면 `tmux ls`로 확인한 후 기존 세션에 다시 접속합니다.
+
+## 9단계. 보안 DB 검증 종료와 접속정보 제거
+
+보안 DB 검증이 끝났다면 서버가 더 이상 DB에 접속하지 않도록 실행 프로세스와 접속정보를 함께 정리합니다.
+
+### 1. Host Runner 중지
+
+tmux에서 수동 실행했다면 세션과 프로세스를 확인한 뒤 종료합니다.
+
+```bash
+tmux ls
+pgrep -af host-runner
+```
+
+실행 중인 tmux 세션에 들어가 `Ctrl+C`로 Host Runner를 종료합니다.
+
+```bash
+tmux attach -t <APP_SESSION_NAME>
+```
+
+systemd 서비스로 실행했다면 다음과 같이 중지하고 자동 시작을 해제합니다.
+
+```bash
+sudo systemctl disable --now rust-wasm-commerce
+sudo systemctl status rust-wasm-commerce --no-pager
+```
+
+마지막으로 프로세스와 포트가 닫혔는지 확인합니다.
+
+```bash
+pgrep -af host-runner || echo 'host-runner stopped'
+ss -ltnp | grep ':8091' || echo 'port 8091 closed'
+```
+
+### 2. 서버의 DB 접속정보 제거
+
+프로젝트의 `.env`를 사용했다면 삭제합니다.
+
+```bash
+cd ~/apps/rust-wasm-commerce-platform
+rm .env
+test ! -f .env && echo '.env removed'
+```
+
+systemd 환경 파일을 별도로 사용했다면 해당 파일도 삭제한 뒤 설정을 다시 읽습니다.
+
+```bash
+sudo rm /etc/rust-wasm-commerce.env
+sudo systemctl daemon-reload
+```
+
+현재 셸에 불러온 환경변수도 해제합니다.
+
+```bash
+unset DATABASE_URL PG_TLS_INSECURE
+```
+
+### 3. 연결 종료 확인
+
+접속정보 제거 후 Host Runner가 시작되지 않고 DB 연결도 수행되지 않는지 확인합니다. 실제 접속정보를 셸 기록이나 캡처에 남기지 않습니다.
+
+```bash
+test ! -f ~/apps/rust-wasm-commerce-platform/.env && echo 'DB configuration removed'
+pgrep -af host-runner || echo 'no running host-runner'
+```
+
+### 4. 외부 방화벽 허용 철회 요청
+
+검증을 위해 Lightsail 서버의 고정 송신 주소를 DB 방화벽에 임시 허용했다면, 담당자에게 테스트 완료 사실과 함께 해당 허용 규칙의 철회를 요청합니다. 이 작업은 애플리케이션 서버가 아니라 DB 네트워크 관리자 영역이므로 서버에서 직접 삭제할 수 없습니다.
+
+이후 공개 포트폴리오 실행에는 회사나 보안 DB가 아닌 개인 PostgreSQL을 사용합니다.
