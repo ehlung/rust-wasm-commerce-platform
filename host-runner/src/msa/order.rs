@@ -16,7 +16,7 @@ use wasmtime::{
 };
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
-use crate::db::{DbPool, create_pool};
+use crate::db::{DbPool, create_pool_from_env};
 
 use super::{
     bindings::order,
@@ -305,7 +305,7 @@ struct OrderState {
 }
 
 pub async fn run() -> Result<()> {
-    let pool = create_pool()?;
+    let pool = create_pool_from_env("ORDER_DATABASE_URL")?;
     pool.get()
         .context("Order Service가 PostgreSQL에 연결하지 못했습니다")?;
     let catalog_url = env::var("CATALOG_URL")

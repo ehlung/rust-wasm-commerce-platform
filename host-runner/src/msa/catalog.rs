@@ -16,7 +16,7 @@ use wasmtime::{
 };
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
-use crate::db::{DbPool, create_pool};
+use crate::db::{DbPool, create_pool_from_env};
 
 use super::{
     bindings::{inventory, product},
@@ -192,7 +192,7 @@ struct CatalogState {
 }
 
 pub async fn run() -> Result<()> {
-    let pool = create_pool()?;
+    let pool = create_pool_from_env("CATALOG_DATABASE_URL")?;
     pool.get()
         .context("Catalog Service가 PostgreSQL에 연결하지 못했습니다")?;
     let runtime = CatalogRuntime::load(pool.clone())?;

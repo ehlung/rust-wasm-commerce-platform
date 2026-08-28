@@ -54,7 +54,7 @@ API Gateway :8091
 - 주문 취소: `CANCEL_PENDING → 예약 해제 → CANCELLED`
 - 재고 예약 토큰: 같은 요청의 중복 차감을 막고 보상 작업을 멱등하게 처리
 
-개발 환경에서는 하나의 PostgreSQL 인스턴스 안에 전용 스키마를 사용합니다. 이는 논리적 소유권을 검증하기 위한 선택이며, 운영 환경에서는 서비스별 DB 계정 또는 DB 인스턴스로 물리적 권한까지 분리할 수 있습니다.
+개발 환경에서는 하나의 PostgreSQL 인스턴스 안에 전용 스키마를 사용합니다. `CATALOG_DATABASE_URL`과 `ORDER_DATABASE_URL`에는 같은 DB의 서로 다른 최소권한 계정 또는 별도 DB 주소를 설정할 수 있습니다. 이는 논리적 소유권에서 물리적 권한 분리로 확장하기 위한 경계입니다.
 
 세부 설계는 [아키텍처 문서](docs/architecture.md)를 참고하세요.
 
@@ -72,6 +72,8 @@ cp .env.example .env
 ```
 
 실제 `DATABASE_URL`은 추적되지 않는 `.env` 또는 배포 환경의 Secret에만 저장합니다.
+
+MSA 모드에서는 `CATALOG_DATABASE_URL`과 `ORDER_DATABASE_URL`을 사용합니다. 간단한 로컬 검증에서는 두 값에 같은 개인 DB URL을 넣을 수 있습니다.
 
 ## 빌드와 테스트
 

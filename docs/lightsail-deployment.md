@@ -282,7 +282,46 @@ psql "$DATABASE_URL" -c 'SELECT id, status, total_cents FROM rust_wasm_shop.orde
 psql "$DATABASE_URL" -c 'SELECT * FROM rust_wasm_shop.order_items ORDER BY order_id, product_id;'
 ```
 
-## 8단계. systemd와 Nginx 적용
+## 8단계. MSA 모드 실행
+
+단일 Host Runner 검증 후 Gateway·Catalog·Order 프로세스를 분리할 수 있습니다. 먼저 전용 스키마를 적용합니다.
+
+```bash
+cd ~/apps/rust-wasm-commerce-platform
+set -a
+source .env
+set +a
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0002_msa.sql
+```
+
+각 프로세스는 별도 tmux 세션에서 실행합니다.
+
+```bash
+tmux new-session -d -s commerce-catalog \
+  "cd ~/apps/rust-wasm-commerce-platform && set -a && source .env && set +a && RUNNER_MODE=catalog CATALOG_DATABASE_URL=\"\$DATABASE_URL\" APP_ADDR=127.0.0.1:8092 ./target/release/host-runner"
+
+tmux new-session -d -s commerce-order \
+  "cd ~/apps/rust-wasm-commerce-platform && set -a && source .env && set +a && RUNNER_MODE=order ORDER_DATABASE_URL=\"\$DATABASE_URL\" APP_ADDR=127.0.0.1:8093 CATALOG_URL=http://127.0.0.1:8092 ./target/release/host-runner"
+
+tmux new-session -d -s commerce-gateway \
+  "cd ~/apps/rust-wasm-commerce-platform && RUNNER_MODE=gateway APP_ADDR=127.0.0.1:8091 CATALOG_URL=http://127.0.0.1:8092 ORDER_URL=http://127.0.0.1:8093 ./target/release/host-runner"
+```
+
+프로세스와 포트를 확인합니다.
+
+```bash
+tmux ls
+ss -ltnp | grep -E ':8091|:8092|:8093'
+curl http://127.0.0.1:8091/health
+```
+
+`8091` Gateway만 외부 진입점으로 사용하며 `8092`, `8093`은 Loopback 또는 컨테이너 내부 네트워크에만 둡니다. 전체 상품 생성·주문·취소 흐름은 다음 명령으로 확인합니다.
+
+```bash
+BASE_URL=http://127.0.0.1:8091 scripts/msa-smoke-test.sh
+```
+
+## 9단계. systemd와 Nginx 적용
 
 수동 실행과 DB 저장까지 확인한 뒤 상시 운영 설정을 적용합니다.
 
@@ -313,7 +352,7 @@ CARGO_BUILD_JOBS=1 make build
 
 이미 같은 이름의 tmux 세션이 있다면 `tmux ls`로 확인한 후 기존 세션에 다시 접속합니다.
 
-## 9단계. 보안 DB 검증 종료와 접속정보 제거
+## 10단계. 보안 DB 검증 종료와 접속정보 제거
 
 보안 DB 검증이 끝났다면 서버가 더 이상 DB에 접속하지 않도록 실행 프로세스와 접속정보를 함께 정리합니다.
 
