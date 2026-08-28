@@ -1,0 +1,44 @@
+services:
+  gateway:
+    build:
+      context: ../..
+      dockerfile: deploy/msa/Dockerfile
+    environment:
+      RUNNER_MODE: gateway
+      APP_ADDR: 0.0.0.0:8091
+      CATALOG_URL: http://catalog:8092
+      ORDER_URL: http://order:8093
+      RUST_LOG: info
+    ports:
+      - "8091:8091"
+    depends_on:
+      - catalog
+      - order
+    restart: unless-stopped
+
+  catalog:
+    build:
+      context: ../..
+      dockerfile: deploy/msa/Dockerfile
+    environment:
+      RUNNER_MODE: catalog
+      APP_ADDR: 0.0.0.0:8092
+      DATABASE_URL: ${DATABASE_URL}
+      PG_TLS_INSECURE: ${PG_TLS_INSECURE:-false}
+      RUST_LOG: info
+    restart: unless-stopped
+
+  order:
+    build:
+      context: ../..
+      dockerfile: deploy/msa/Dockerfile
+    environment:
+      RUNNER_MODE: order
+      APP_ADDR: 0.0.0.0:8093
+      DATABASE_URL: ${DATABASE_URL}
+      PG_TLS_INSECURE: ${PG_TLS_INSECURE:-false}
+      CATALOG_URL: http://catalog:8092
+      RUST_LOG: info
+    depends_on:
+      - catalog
+    restart: unless-stopped
