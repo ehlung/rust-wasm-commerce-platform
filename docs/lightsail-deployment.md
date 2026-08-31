@@ -165,6 +165,14 @@ sudo dmesg | grep -i -E 'out of memory|killed process' | tail
 - `Killed` 또는 OOM 기록이 있음: 메모리 부족으로 종료된 것이므로 Swap과 빌드 작업 수 확인
 - 같은 디렉터리에서 빌드를 중복 실행하지 않음
 
+기존 release 의존성이 이미 빌드된 상태에서 Host Runner 변경만 빠르게 기능 검증해야 한다면 최종 크레이트의 LTO만 끌 수 있습니다.
+
+```bash
+cargo rustc -p host-runner --release -- -C lto=off -C codegen-units=16
+```
+
+이 명령은 기능은 같지만 프로젝트의 기본 release 최적화 설정과 실행 성능이 다를 수 있으므로, 메모리가 작은 검증 서버의 임시 배포에만 사용합니다. 최종 배포 산출물은 충분한 빌드 자원이나 CI에서 기본 `make build`로 생성합니다.
+
 빌드 성공 여부는 다음 명령으로 확인합니다.
 
 ```bash

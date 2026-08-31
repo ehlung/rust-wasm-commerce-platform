@@ -111,6 +111,17 @@ chmod +x scripts/msa-smoke-test.sh
 scripts/msa-smoke-test.sh
 ```
 
+### 확인한 MSA 흐름
+
+AWS Lightsail Ubuntu 서버에서 Gateway·Catalog·Order를 별도 프로세스로 실행하고, 개인 Neon PostgreSQL을 연결해 다음 흐름을 확인했습니다.
+
+- Gateway 통합 상태 확인: 세 서비스 모두 정상
+- 상품 생성 후 주문 생성: 재고 `10 → 8`, 주문 `CREATED`
+- 주문 취소: 예약 `RELEASED`, 주문 `CANCELLED`, 재고 `8 → 10`
+- Catalog와 Order가 상대 스키마를 직접 변경하지 않고 내부 HTTP API로만 협력
+
+검증용 환경에서는 두 서비스가 같은 PostgreSQL 인스턴스를 사용하되 전용 스키마로 소유권을 분리했습니다. 운영 환경에서는 서비스별 최소권한 계정 또는 별도 DB로 확장할 수 있습니다.
+
 ### 컨테이너 실행
 
 ```bash
