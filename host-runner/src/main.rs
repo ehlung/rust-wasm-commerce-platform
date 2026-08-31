@@ -7,6 +7,7 @@ use tracing_subscriber::EnvFilter;
 mod api;
 mod bindings;
 mod db;
+mod msa;
 mod repository;
 mod runtime;
 
@@ -21,6 +22,22 @@ async fn main() -> Result<()> {
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
         .init();
 
+    match env::var("RUNNER_MODE")
+        .unwrap_or_else(|_| "monolith".to_string())
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "monolith" => run_monolith().await,
+        "gateway" => msa::gateway::run().await,
+        "catalog" => msa::catalog::run().await,
+        "order" => msa::order::run().await,
+        mode => anyhow::bail!(
+            "지원하지 않는 RUNNER_MODE입니다: {mode} (monolith, gateway, catalog, order 중 선택)"
+        ),
+    }
+}
+
+async fn run_monolith() -> Result<()> {
     let runtime = tokio::task::spawn_blocking(|| -> Result<ComponentRuntime> {
         let pool = create_pool()?;
         pool.get().context(

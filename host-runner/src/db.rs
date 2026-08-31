@@ -55,8 +55,13 @@ fn parse_insecure_tls_setting(value: Option<&str>) -> Result<bool> {
 }
 
 pub fn create_pool() -> Result<DbPool> {
-    let database_url = env::var("DATABASE_URL")
-        .context("DATABASE_URL 환경변수가 필요합니다. 실제 접속정보는 .env에만 작성하세요")?;
+    create_pool_from_env("DATABASE_URL")
+}
+
+pub fn create_pool_from_env(variable: &str) -> Result<DbPool> {
+    let database_url = env::var(variable).with_context(|| {
+        format!("{variable} 환경변수가 필요합니다. 실제 접속정보는 .env에만 작성하세요")
+    })?;
     let config =
         Config::from_str(&database_url).context("DATABASE_URL 형식이 올바르지 않습니다")?;
 
@@ -79,7 +84,7 @@ pub fn create_pool() -> Result<DbPool> {
     Pool::builder()
         .max_size(8)
         .build(manager)
-        .context("PostgreSQL 연결 풀을 만들지 못했습니다")
+        .with_context(|| format!("{variable} PostgreSQL 연결 풀을 만들지 못했습니다"))
 }
 
 #[cfg(test)]
