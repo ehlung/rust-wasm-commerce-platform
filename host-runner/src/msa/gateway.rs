@@ -4,7 +4,7 @@ use anyhow::Result;
 use axum::{
     Router,
     body::{Body, Bytes},
-    extract::State,
+    extract::{DefaultBodyLimit, State},
     http::{HeaderMap, Method, StatusCode, Uri, header},
     response::Response,
     routing::any,
@@ -89,7 +89,10 @@ pub async fn run() -> Result<()> {
         order_url: service_url("ORDER_URL", "http://127.0.0.1:8093"),
     };
     let address = address("0.0.0.0:8091")?;
-    let app = Router::new().fallback(any(dispatch)).with_state(state);
+    let app = Router::new()
+        .fallback(any(dispatch))
+        .layer(DefaultBodyLimit::max(64 * 1024))
+        .with_state(state);
     let listener = tokio::net::TcpListener::bind(address).await?;
     tracing::info!(%address, "API Gateway Service started");
     axum::serve(listener, app).await?;

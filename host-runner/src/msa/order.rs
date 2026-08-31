@@ -3,7 +3,7 @@ use std::{env, sync::Arc, time::Duration};
 use anyhow::{Context, Result};
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{DefaultBodyLimit, Path, State},
     http::StatusCode,
     routing::{get, post},
 };
@@ -305,22 +305,27 @@ struct OrderState {
 }
 
 pub async fn run() -> Result<()> {
-    let pool = create_pool_from_env("ORDER_DATABASE_URL")?;
-    pool.get()
-        .context("Order Service가 PostgreSQL에 연결하지 못했습니다")?;
     let catalog_url = env::var("CATALOG_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:8092".to_string())
         .trim_end_matches('/')
         .to_string();
-    let state = OrderState {
-        runtime: Arc::new(OrderRuntime::load(pool, catalog_url)?),
-    };
+    let state = tokio::task::spawn_blocking(move || -> Result<OrderState> {
+        let pool = create_pool_from_env("ORDER_DATABASE_URL")?;
+        pool.get()
+            .context("Order Service가 PostgreSQL에 연결하지 못했습니다")?;
+        Ok(OrderState {
+            runtime: Arc::new(OrderRuntime::load(pool, catalog_url)?),
+        })
+    })
+    .await
+    .context("Order Service 초기화 작업이 비정상 종료되었습니다")??;
     let address = address("127.0.0.1:8093")?;
     let app = Router::new()
         .route("/internal/health", get(health))
         .route("/api/orders", post(create_order))
         .route("/api/orders/{id}", get(get_order))
         .route("/api/orders/{id}/cancel", post(cancel_order))
+        .layer(DefaultBodyLimit::max(64 * 1024))
         .with_state(state);
     let listener = tokio::net::TcpListener::bind(address).await?;
     tracing::info!(%address, "Order Service started");

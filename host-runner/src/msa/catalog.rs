@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result, anyhow};
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{DefaultBodyLimit, Path, State},
     http::StatusCode,
     routing::{get, patch, post},
 };
@@ -192,14 +192,18 @@ struct CatalogState {
 }
 
 pub async fn run() -> Result<()> {
-    let pool = create_pool_from_env("CATALOG_DATABASE_URL")?;
-    pool.get()
-        .context("Catalog Service가 PostgreSQL에 연결하지 못했습니다")?;
-    let runtime = CatalogRuntime::load(pool.clone())?;
-    let state = CatalogState {
-        runtime: Arc::new(runtime),
-        pool,
-    };
+    let state = tokio::task::spawn_blocking(|| -> Result<CatalogState> {
+        let pool = create_pool_from_env("CATALOG_DATABASE_URL")?;
+        pool.get()
+            .context("Catalog Service가 PostgreSQL에 연결하지 못했습니다")?;
+        let runtime = CatalogRuntime::load(pool.clone())?;
+        Ok(CatalogState {
+            runtime: Arc::new(runtime),
+            pool,
+        })
+    })
+    .await
+    .context("Catalog Service 초기화 작업이 비정상 종료되었습니다")??;
     let address = address("127.0.0.1:8092")?;
     let app = Router::new()
         .route("/internal/health", get(health))
@@ -208,6 +212,7 @@ pub async fn run() -> Result<()> {
         .route("/internal/quotes", post(quote))
         .route("/internal/reservations", post(reserve))
         .route("/internal/reservations/{token}/release", post(release))
+        .layer(DefaultBodyLimit::max(64 * 1024))
         .with_state(state);
     let listener = tokio::net::TcpListener::bind(address).await?;
     tracing::info!(%address, "Catalog Service started");
