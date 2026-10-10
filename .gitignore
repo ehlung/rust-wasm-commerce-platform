@@ -28,5 +28,5 @@ presentation/
 mkdocs.presentation.yml
 site/
 
-# Local writing plans
-docs/velog-writing-guide.md
+# Local writing plans and drafts
+docs/velog-*.md
